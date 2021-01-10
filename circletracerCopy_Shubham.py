@@ -27,41 +27,18 @@ green = 0, 255, 0
 cyan = 0, 180, 105
 maroon = 119, 27, 7
 
-obst1 = [325, 300, 50]
-obst2 = [435, 300, 25]
-obst3 = [575, 250, 50]
-obst4 = [600, 400, 45]
-obst = [obst1, obst2, obst3, obst4]
+obst = []
 path = []
 gr = 10  # Grace Radius variables
 size = width, height = 900, 600
 
 
 def sp():
-    return 80
-    return (random.randint(1, 4))
+    return (random.randint(80, 100))
 
 
 def pos(m):
     return (random.randint(1, m-1))
-
-
-def ballPositon(n):
-    obs = [None]*n
-    speed = [None]*n
-
-    screen = pygame.display.set_mode(size)
-
-    pygame.display.set_caption("Moving obstracle")
-
-    # print(ball)
-
-    # assigning random values for obs and speed
-    for i in range(n):
-        #obs[i] = pygame.transform.scale(ball, (ball.get_width(), ball.get_height())).get_rect()
-        obs[i] = ball.get_rect()
-        obs[i].center = pos(width), pos(height)
-        speed[i] = [sp(), sp()]
 
 
 def init_obstacles():  # Later run in for loop
@@ -71,13 +48,6 @@ def init_obstacles():  # Later run in for loop
         q[2] = q[2] + 10
 
 
-def reset():
-    screen.fill((240, 240, 0))
-    init_obstacles()
-    pygame.display.update()
-    print("resetting")
-
-
 def dist_between(a, b):
     return ((a[0]-b[0])**2 + (a[1]-b[1])**2)**0.5
 
@@ -85,6 +55,7 @@ def dist_between(a, b):
 def OptimisePathDistance(ipos, destiny):
     finaldestiny = [ipos]
     while(len(destiny) > 0):
+        pygame.display.update()
         dist_row = []
         for i in destiny:
             dist_row.append(dist_between(i, finaldestiny[-1]))
@@ -99,6 +70,7 @@ def OptimisePathDistance(ipos, destiny):
 def sortedobstacles(obstacles, start):
     distances = []
     for o in obstacles:
+        pygame.display.update()
         d = dist_between(o, start)
         distances.append(d)
     distances1 = sorted(distances)
@@ -119,20 +91,22 @@ def f(p, q, x1, y1, x2, y2):  # Tells whether this is a obstacle or not
 def inmypath(obst, s, e):
     trouble = []
     for o in obst:
+        pygame.display.update()
         if(f(o[0], o[1], s[0], s[1], e[0], e[1]) == False):
-            #print(o, "NOT OBSTACLE")
+            # print(o, "NOT OBSTACLE")
             k = 2
         else:
             distance = ((e[1]-s[1])*o[0] - (e[0]-s[0])*o[1] +
                         e[0]*s[1] - e[1]*s[0])/dist_between(s, e)
             if(abs(distance) < o[2]):
-                #print(o, "As OBSTACLE")
+                # print(o, "As OBSTACLE")
                 trouble.append(o)
     return trouble
 
 
 def lastpt(path, obstacles, start):
     for i in path[::-1]:
+        pygame.display.update()
         thisisgood = True
         obst = inmypath(obstacles, start, i)
         for j in obstacles:
@@ -148,6 +122,7 @@ def refine(path, obstacles):
     startpt = path[0]
     startptidx = 0
     while(startpt is not path[-1]):
+        pygame.display.update()
         lastpoint = lastpt(path[startptidx:], obstacles, refinedpath[-1])
         refinedpath.append(lastpoint)
         startpt = lastpoint
@@ -164,6 +139,7 @@ def findpath(start, end):
     if len(obstacles) > 0:
         obstacles = sortedobstacles(obstacles, start)
         for i in obstacles:
+            pygame.display.update()
             dangle = floor(acos((i[2] - gr)/i[2])*180/pi)
             temp = sol.Solver(i, path[-1], end, dangle)
             path = path + temp
@@ -174,83 +150,135 @@ def findpath(start, end):
     return path
 
 
+def reset():
+    global obst, path
+    obst1 = [325, 300, 50]
+    obst2 = [435, 300, 25]
+    obst3 = [575, 250, 50]
+    obst4 = [600, 400, 45]
+    obst = [obst1, obst2, obst3, obst4]
+    path = []
+
+    screen.fill((240, 240, 0))
+    init_obstacles()
+    pygame.display.update()
+
+
+def obstacleWaypoints_Path(Point1, m):
+    obsWaypoint = []
+    while(not len(obsWaypoint) == m):
+        x = pos(width)
+        y = pos(height)
+        obsWaypoint.append([x, y])
+        for i in obst:
+            if not dist_between([x, y], [i[0], i[1]]) > i[2]:
+                obsWaypoint.pop(-1)
+                break
+
+    Obst_start = obsWaypoint[0]
+    for i in obsWaypoint:
+        if i[0]**2+i[1]**2 < Obst_start[0]**2+Obst_start[1]**2:
+            Obst_start = i
+        pygame.draw.circle(screen, blue, i, 6, 0)
+    pygame.display.update()
+
+    if not Point1 == "null":
+        Obst_start = Point1
+        obsWaypoint.insert(0, Point1)
+    obsWaypoint = OptimisePathDistance(Obst_start, obsWaypoint[0:n])
+    obsWaypoint.pop(0)
+
+    obsPath = [obsWaypoint[0], [0, 0]]
+    for i in range(0, len(obsWaypoint)-1):
+        path = findpath(obsWaypoint[i], obsWaypoint[i+1])
+        obsPath.pop(-1)
+        if path[0] == obsPath[-1]:
+            path.pop(0)
+        for j in path:
+            obsPath.append([j[0], j[1]])
+
+    if obsPath[-1] == obsPath[-2]:
+        obsPath.pop(-1)
+    print("obsPath", obsPath)
+    return obsPath
+
+
 n = int(input("Enter the number of waypoints to visit:"))
 screen = pygame.display.set_mode(size)
-screen.fill((240, 240, 0))
-init_obstacles()
-pygame.display.update()
+reset()
 
 goalset = 0
 destiny = []
 
-
 while True:
+    # MODIFICATIONS STARTS FROM HERE
+    obsPath = obstacleWaypoints_Path("null", n)
     while goalset < n:
         for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 position = event.pos
                 print(position)
                 destiny.append(position)
-
                 if goalset == 0:
                     start = position
-
                 pygame.draw.circle(screen, red, position, 6, 0)
                 pygame.display.update()
                 goalset += 1
 
-            if event.type == pygame.QUIT:
-                pygame.quit()
-
-    # MODIFICATIONS STARTS FROM HERE
     T = time.time()
     # change speed to experiment
-    v0 = 100
+    v0 = 80
     p = n
     NextPoint = []
 
     DynObst_radius = 6
-    DynObst = [pos(width), pos(height/2), DynObst_radius+10]
-    DynObst_speed = [sp(), sp()]
-
-    obst.append(DynObst)
+    DynObst = obsPath[0]
+    DynObst_temp = [DynObst[0], DynObst[1], DynObst_radius]
+    DynObst_speed = sp()
+    obst.append(DynObst_temp)
 
     while True:
         time.sleep(0.0)
-
-        print("Dynamic_obst", obst[-1])
 
         k = time.time()
         delT = k-T
         T = k
 
-        if DynObst[0]*(width-DynObst[0]) > 0 and DynObst[1]*(height-DynObst[1]) > 0:
-            pygame.draw.circle(
-                screen, blue, [DynObst[0], DynObst[1]], DynObst_radius, 0)
-            print(delT*DynObst_speed[0], delT*DynObst_speed[1])
-            DynObst[0] = int(DynObst[0] + delT*DynObst_speed[0])
-            DynObst[1] = int(DynObst[1] + delT*DynObst_speed[1])
-            obst[len(obst)-1] = DynObst
-
+        # DYNAMIC OBSTACLE POSITION UPDATE
+        if DynObst == obsPath[0] or dist_between(DynObst, obsPath[0]) < 2.0:
+            DynObst = obsPath[0]
+            obsPath.pop(0)
+            if len(obsPath) == 0:
+                obsPath = obstacleWaypoints_Path(DynObst, 3)
+                obsPath.pop(0)
         else:
-            DynObst = [pos(width), pos(height/2), DynObst_radius+10]
-            DynObst_speed = [sp(), sp()]
+            dis = dist_between(DynObst, obsPath[0])
+            obsDirection = [(obsPath[0][0]-DynObst[0])/dis,
+                            (obsPath[0][1]-DynObst[1])/dis]
+            DynObst[0] = DynObst[0] + DynObst_speed*delT*obsDirection[0]
+            DynObst[1] = DynObst[1] + DynObst_speed*delT*obsDirection[1]
 
-            #T = time.time()
-            # pygame.draw.circle(
-            #     screen, blue, [DynObst[0], DynObst[1]], DynObst_radius, 0)
-
+        obst[len(obst)-1] = [int(DynObst[0]), int(DynObst[1]), DynObst_radius]
+        pygame.draw.circle(
+            screen, blue, [int(DynObst[0]), int(DynObst[1])], 2, 0)
+        pygame.display.update()
+        pygame.display.update()
+        print("DynObst", DynObst)
+        # UAV POSITION UPDATE
         destiny = OptimisePathDistance(destiny[0], destiny[1:p])
 
         for i in range(0, len(destiny)-1):
             path = findpath(destiny[i], destiny[i+1])
-            # sys.exit()
             if i == 0:
                 NextPoint = [path[1][0], path[1][1]]
                 print("path", path)
 
             for i in range(len(path)-1):
                 pygame.draw.line(screen, cyan, path[i], path[i+1])
+                pygame.display.update()
                 pygame.display.update()
 
         FirstPoint = [destiny[0][0], destiny[0][1]]
@@ -263,18 +291,20 @@ while True:
         print('x', dList, FirstPoint, NextPoint)
 
         destiny[0] = [FirstPoint[0] + dList[0], FirstPoint[1] + dList[1]]
-        print(destiny[0])
+        print("UAVPos", destiny[0])
 
         if dist_between(destiny[0], destiny[1]) < 1.0:
             destiny[0] = destiny[1]
             destiny.pop(1)
             p -= 1
 
-        NewStartPos = [int(i) for i in destiny[0]]
-        print(NewStartPos)
-        pygame.draw.circle(screen, red, NewStartPos, 2, 0)
-        # pygame.display.flip()
+        IntegerPostion = [int(i) for i in destiny[0]]
+        print("UAVIntPos", IntegerPostion)
+        pygame.draw.circle(screen, red, IntegerPostion, 2, 0)
         pygame.display.update()
+        pygame.display.update()
+        # for _ in range(20):
+        #     pygame.display.update()
 
         if p < 2:
             break
@@ -282,3 +312,15 @@ while True:
     goalset = 0
     destiny = []
     print("Destination Arrived")
+
+    # FOR RESETTING THE WHOLE GAME
+    flag = True
+    while(flag):
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.QUIT:
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                flag = False
+    reset()
